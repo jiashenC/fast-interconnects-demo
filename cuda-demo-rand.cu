@@ -3,13 +3,24 @@
 #include <cstdlib>
 #include <cassert>
 
+#include <stdlib.h>
+
+#define HASH_FUNC_PRIME_DIVISOR 4294967291u
+#define HASH_FUNC_SALT 0xFAB011991u
+
+inline __host__ __device__ unsigned uhash(const unsigned constant, const int key, const size_t size) {
+  unsigned long long int val = constant ^ HASH_FUNC_SALT + constant * key;
+  unsigned result = val % HASH_FUNC_PRIME_DIVISOR;
+  return result % size;
+}
+
 // Add a scalar to the vector
 __global__ void vadd(int* const v, int const a, size_t const len) {
   const unsigned int gid = blockDim.x * blockIdx.x + threadIdx.x;
   const unsigned int gsize = gridDim.x * blockDim.x;
 
   for (size_t i = gid; i < len; i += gsize) {
-    v[i] += a;
+    v[uhash(3, i, len)] += a;
   }
 }
 
@@ -62,11 +73,11 @@ int main(int argc, char* argv[]) {
   std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << std::endl;
 
   // Verify that result is correct
-  unsigned long long sum = 0;
-  for (size_t i = 0; i < LEN; ++i) {
-    sum += h_data[i];
-  }
-  assert(sum / 2 == LEN);
+  /* unsigned long long sum = 0; */
+  /* for (size_t i = 0; i < LEN; ++i) { */
+  /*   sum += h_data[i]; */
+  /* } */
+  /* assert(sum / 2 == LEN); */
 
 #ifdef CUDA_UM
   cudaFree(d_data);
