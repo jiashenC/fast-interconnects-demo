@@ -35,7 +35,9 @@ int main(int argc, char* argv[]) {
 
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-#if CUDA_UM
+#ifdef CUDA_COHERENT
+  d_data = h_data;
+#elif CUDA_UM
   cudaMallocManaged(&d_data, LEN * sizeof(int));
   cudaMemAdvise(d_data, LEN * sizeof(int), cudaMemAdviseSetAccessedBy, gpu_id);
   memcpy(d_data, h_data, LEN * sizeof(int));
@@ -68,7 +70,9 @@ int main(int argc, char* argv[]) {
   }
   assert(sum / 2 == LEN);
 
-#ifdef CUDA_UM
+#ifdef CUDA_COHERENT
+  d_data = nullptr;
+#elif CUDA_UM
   cudaFree(d_data);
 #elif CUDA_ZEROCOPY
   cudaHostUnregister(d_data);
