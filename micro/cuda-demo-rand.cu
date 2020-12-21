@@ -50,27 +50,31 @@ int main(int argc, char* argv[]) {
   d_data = h_data;
 #elif CUDA_UM
   cudaMallocManaged(&d_data, LEN * sizeof(int));
-  cudaMemAdvise(d_data, LEN * sizeof(int), cudaMemAdviseSetAccessedBy, gpu_id);
   memcpy(d_data, h_data, LEN * sizeof(int));
+  cudaMemAdvise(d_data, LEN * sizeof(int), cudaMemAdviseSetAccessedBy, gpu_id);
 #elif CUDA_ZEROCOPY
   cudaHostRegister(h_data, LEN * sizeof(int), cudaHostRegisterMapped);
   cudaHostGetDevicePointer(&d_data, h_data, 0);
 #else
   cudaMalloc(&d_data, LEN * sizeof(int));
-  cudaMemcpy(d_data, h_data, sizeof(int) * LEN, cudaMemcpyHostToDevice);
+  cudaMemcpyAsync(d_data, h_data, sizeof(int) * LEN, cudaMemcpyHostToDevice);
 #endif
 
   // Call a function to do some work
+#ifdef CUDA_UM
+  cudaMemPrefetchAsync(d_data, LEN * sizeof(int), gpu_id);
+#endif
   vadd<<<grid, block>>>(d_data, 1, LEN);
-  cudaDeviceSynchronize();
 
 #if CUDA_UM
+  cudaMemAdvise(d_data, LEN * sizeof(int), cudaMemAdviseSetAccessedBy, cudaCpuDeviceId);
   memcpy(h_data, d_data, LEN * sizeof(int));
 #elif CUDA_ZEROCOPY
 #else
-  cudaMemcpy(h_data, d_data, sizeof(int) * LEN, cudaMemcpyDeviceToHost);
+  cudaMemcpyAsync(h_data, d_data, sizeof(int) * LEN, cudaMemcpyDeviceToHost);
 #endif
 
+  cudaDeviceSynchronize();
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << std::endl;
 
