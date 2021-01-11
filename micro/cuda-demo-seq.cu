@@ -56,6 +56,7 @@ int main(int argc, char* argv[]) {
   vadd<<<grid, block>>>(d_data, 1, LEN);
 
 #if CUDA_UM
+  cudaDeviceSynchronize();
   cudaMemPrefetchAsync(d_data, LEN * sizeof(int), cudaCpuDeviceId);
   memcpy(h_data, d_data, LEN * sizeof(int));
 #elif CUDA_ZEROCOPY
